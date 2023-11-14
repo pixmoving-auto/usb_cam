@@ -432,7 +432,7 @@ bool UsbCamNode::take_and_send_image()
     }
 
     cv::remap(image_raw_, image_rect_, undistort_map_x_, undistort_map_y_, cv::INTER_LINEAR);
-    m_rect_resie_image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_rect_).toImageMsg();
+    m_rect_resie_image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), m_camera->get_pixel_format()->ros(), image_rect_).toImageMsg();
   }
   // ----------------- ----------------- -----------------
 

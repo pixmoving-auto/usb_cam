@@ -2,7 +2,6 @@
     ros__parameters:
       video_device: "/dev/video0"
       framerate: 30.0
-      camera_lifetime: 33
       io_method: "mmap"
       frame_id: "test_camera"
       pixel_format: "uyvy2rgb"  
@@ -24,3 +23,4 @@
       focus: -1
       # resize
       image_resize: 2
+      camera_lifetime: 33
