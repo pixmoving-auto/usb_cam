@@ -46,19 +46,40 @@ def generate_launch_description():
     parser.add_argument('-n', '--node-name', dest='node_name', type=str,
                         help='name for device', default='usb_cam')
 
-    user_config_path = os.path.join(get_package_share_directory('usb_cam'), 'config')
-
-    # get path to params file
-    params_path = os.path.join(
-        user_config_path,
-        'params.yaml'
-    )
+    parameters={
+        "video_device": "/dev/video0",
+        "framerate": 30.0,
+        "io_method": "mmap",
+        "frame_id": "test_camera",
+        "pixel_format": "uyvy2rgb",  
+        "image_width": 1920,
+        "image_height": 1080,
+        "camera_name": "test_camera",
+        # reusing same camera intrinsics only for demo, should really be unique for camera2"
+        "camera_info_url": "package://usb_cam/config/camera_info.yaml",
+        "brightness": -1,
+        "contrast": -1,
+        "saturation": -1,
+        "sharpness": -1,
+        "gain": -1,
+        "auto_white_balance": True,
+        "white_balance": 4000,
+        "autoexposure": True,
+        "exposure": 100,
+        "autofocus": False,
+        "focus": -1,
+        # resize
+        "image_resize": 2,
+        "camera_lifetime": 33,
+    }
+    
+    parameters["video_device"] = os.path.realpath(parameters["video_device"])
 
     node = Node(
         package='usb_cam', executable='usb_cam_node_exe', output='screen',
         name="usb_cam_node",
         namespace='gmsl',
-        parameters=[params_path]
+        parameters=[parameters]
     )
 
     ld.add_action(node)
