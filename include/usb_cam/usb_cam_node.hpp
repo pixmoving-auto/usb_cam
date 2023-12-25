@@ -79,7 +79,7 @@ public:
 
   UsbCam * m_camera;
 
-  sensor_msgs::msg::Image::UniquePtr m_image_msg;
+  sensor_msgs::msg::Image::SharedPtr m_image_msg;
   sensor_msgs::msg::CompressedImage::UniquePtr m_compressed_img_msg;
   std::shared_ptr<image_transport::CameraPublisher> m_image_publisher;
   rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr m_compressed_image_publisher;
@@ -94,6 +94,19 @@ public:
 
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr m_service_capture;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr m_parameters_callback_handle;
+
+private:
+  sensor_msgs::msg::Image::SharedPtr m_rect_resie_image_msg;
+  sensor_msgs::msg::CameraInfo::SharedPtr m_rect_resie_camera_info_msg;
+  std::shared_ptr<image_transport::CameraPublisher> m_rect_resie_image_publisher;
+
+  bool is_get_camera_info_=true;
+
+  cv::Mat image_raw_;
+  cv::Mat image_rect_;
+
+  cv::Mat undistort_map_x_, undistort_map_y_;
+  uint8_t image_resize_=1;
 };
 }  // namespace usb_cam
 #endif  // USB_CAM__USB_CAM_NODE_HPP_
