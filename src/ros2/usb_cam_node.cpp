@@ -421,13 +421,6 @@ bool UsbCamNode::take_and_send_image()
 
       *m_rect_resie_camera_info_msg = *m_camera_info_msg;
       m_rect_resie_camera_info_msg->d.resize(5); 
-      std::array<double, 12UL> p = m_rect_resie_camera_info_msg->p;
-      p[0] =  m_rect_resie_camera_info_msg->k[0];
-      p[2] =  m_rect_resie_camera_info_msg->k[2];
-      p[5] =  m_rect_resie_camera_info_msg->k[4];
-      p[6] =  m_rect_resie_camera_info_msg->k[5];
-      m_rect_resie_camera_info_msg->p = p;
-      
       is_get_camera_info_ = false;
     }
 
