@@ -81,7 +81,6 @@ public:
 
   sensor_msgs::msg::Image::SharedPtr m_image_msg;
   sensor_msgs::msg::CompressedImage::UniquePtr m_compressed_img_msg;
-  std::shared_ptr<image_transport::CameraPublisher> m_image_publisher;
   rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr m_compressed_image_publisher;
   rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr m_compressed_cam_info_publisher;
 
@@ -98,7 +97,15 @@ public:
 private:
   sensor_msgs::msg::Image::SharedPtr m_rect_resie_image_msg;
   sensor_msgs::msg::CameraInfo::SharedPtr m_rect_resie_camera_info_msg;
-  std::shared_ptr<image_transport::CameraPublisher> m_rect_resie_image_publisher;
+
+  // image_raw
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr m_image_raw_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr m_image_raw_info_publisher;
+  
+  // reset_image_raw
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr m_image_reset_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr m_image_reset_info_publisher;
+  
 
   bool is_get_camera_info_=true;
 
