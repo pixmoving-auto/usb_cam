@@ -419,8 +419,16 @@ bool UsbCamNode::take_and_send_image()
         camera_matrix, distortion_coefficients, cv::Mat(), 
         new_K, resize, CV_32FC1, undistort_map_x_, undistort_map_y_);
 
+      // 去畸变后的图像camera_info
+      cv::Mat new_k = cv::getOptimalNewCameraMatrix(camera_matrix, distortion_coefficients, size, 0, size);
       *m_rect_resie_camera_info_msg = *m_camera_info_msg;
-      m_rect_resie_camera_info_msg->d.resize(5); 
+      m_rect_resie_camera_info_msg->d = std::vector<double>(m_rect_resie_camera_info_msg->d.size(), 0.0);
+      
+      m_rect_resie_camera_info_msg->p[0] =  new_k.at<double>(0, 0);
+      m_rect_resie_camera_info_msg->p[2] =  new_k.at<double>(0, 2);
+      m_rect_resie_camera_info_msg->p[5] =  new_k.at<double>(1, 1);
+      m_rect_resie_camera_info_msg->p[6] =  new_k.at<double>(1, 2);
+      m_rect_resie_camera_info_msg->p[10] =  1.0;
       is_get_camera_info_ = false;
     }
 
