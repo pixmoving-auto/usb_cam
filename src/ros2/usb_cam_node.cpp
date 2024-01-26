@@ -423,11 +423,16 @@ bool UsbCamNode::take_and_send_image()
       cv::Mat new_k = cv::getOptimalNewCameraMatrix(camera_matrix, distortion_coefficients, size, 0, size);
       *m_rect_resie_camera_info_msg = *m_camera_info_msg;
       m_rect_resie_camera_info_msg->d = std::vector<double>(m_rect_resie_camera_info_msg->d.size(), 0.0);
-      
-      m_rect_resie_camera_info_msg->p[0] =  new_k.at<double>(0, 0);
-      m_rect_resie_camera_info_msg->p[2] =  new_k.at<double>(0, 2);
-      m_rect_resie_camera_info_msg->p[5] =  new_k.at<double>(1, 1);
-      m_rect_resie_camera_info_msg->p[6] =  new_k.at<double>(1, 2);
+
+      m_rect_resie_camera_info_msg->k[0] =  new_k.at<double>(0, 0);  // fx`
+      m_rect_resie_camera_info_msg->k[2] =  new_k.at<double>(0, 2);  // cx`
+      m_rect_resie_camera_info_msg->k[4] =  new_k.at<double>(1, 1);  // fy`
+      m_rect_resie_camera_info_msg->k[5] =  new_k.at<double>(1, 2);  // cy`
+
+      m_rect_resie_camera_info_msg->p[0] =  new_k.at<double>(0, 0);  // fx` 
+      m_rect_resie_camera_info_msg->p[2] =  new_k.at<double>(0, 2);  // cx`
+      m_rect_resie_camera_info_msg->p[5] =  new_k.at<double>(1, 1);  // fy`
+      m_rect_resie_camera_info_msg->p[6] =  new_k.at<double>(1, 2);  // cy`
       m_rect_resie_camera_info_msg->p[10] =  1.0;
       is_get_camera_info_ = false;
     }
