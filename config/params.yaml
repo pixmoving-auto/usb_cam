@@ -5,6 +5,7 @@
       io_method: "mmap"
       frame_id: "test_camera"
       pixel_format: "uyvy2rgb"  
+      # pixel_format: "yuyv2rgb"  
       image_width: 1920
       image_height: 1080
       camera_name: "test_camera"
@@ -22,5 +23,5 @@
       autofocus: false
       focus: -1
       # resize
-      image_resize: 2
+      image_resize: 1
       camera_lifetime: 33

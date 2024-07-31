@@ -134,6 +134,12 @@ void UsbCam::read_frame()
       // Get timestamp from V4L2 image buffer
       m_image.stamp = usb_cam::utils::calc_img_timestamp(buf.timestamp, m_epoch_time_shift_us);
 
+      // TEST
+      // printf("v4l2_buf.timestamp: %ld.%ld\n", buf.timestamp.tv_sec, buf.timestamp.tv_usec);
+      struct timespec system_start_time;
+      clock_gettime(CLOCK_MONOTONIC, &system_start_time);
+      // printf("clock_gettime: %ld.%ld\n", system_start_time.tv_sec, system_start_time.tv_nsec / 1000);
+
       assert(buf.index < m_number_of_buffers);
       process_image(m_buffers[buf.index].start, m_image.data, buf.bytesused);
 
