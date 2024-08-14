@@ -1,0 +1,34 @@
+image_width: 1920
+image_height: 1080
+camera_name: test_camera
+board_width: 17
+board_height: 13
+square_size: 50.0
+flags: 16385
+
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [1617.74976, 0.0, 991.39157, 0.0, 0.0, 1831.96753, 498.29197, 0.0, 0.0, 0.0,
+    1.0, 0.0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+
+camera_matrix:
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 1.0096461088041725e+03, 0., 9.3689248385778296e+02, 0.,
+       1.0096581504805509e+03, 4.9988257013426869e+02, 0., 0., 1. ]
+distortion_model: plumb_bob
+distortion_coefficients:
+   rows: 14
+   cols: 1
+   dt: d
+   data: [9.5856164145301237e-01, 1.8914835820355605e-01,
+       -2.4506997072279488e-06, 5.9923693345781568e-05,
+       3.9186197392106761e-03, 1.3529369410484064e+00,
+       4.6988473344466519e-01, 3.3337587992892999e-02, 0., 0., 0., 0.,
+       0., 0. ]

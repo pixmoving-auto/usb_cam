@@ -130,6 +130,7 @@ typedef struct
   bool auto_white_balance;
   bool autoexposure;
   bool autofocus;
+  bool rect_color;  // zymouse 是否预处理(颜色空间转换和去畸变)
 } parameters_t;
 
 typedef struct
@@ -330,9 +331,10 @@ public:
       for (auto driver_fmt : driver_supported_formats(args)) {
         std::cerr << "\t" << driver_fmt->name() << std::endl;
       }
-      throw std::invalid_argument(
-              "Specified format `" + args.name + "` is unsupported by this ROS driver"
-      );
+      // throw std::invalid_argument(
+      //   "Specified format `" + args.name + "` is unsupported by this ROS driver"
+      // );
+      std::cerr << "Specified format `"  << args.name << "is unsupported by this ROS driver" << std::endl;
     }
 
     std::cout << "This device supports the following formats:" << std::endl;
@@ -347,6 +349,8 @@ public:
         result = true;
         m_image.pixel_format = found_driver_format;
       }
+      result = true;
+      m_image.pixel_format = found_driver_format;
     }
 
     return result;
@@ -370,10 +374,11 @@ public:
 
     // Look for specified pixel format
     if (!this->set_pixel_format(format_args)) {
-      throw std::invalid_argument(
-              "Specified format `" + parameters.pixel_format_name + "` is unsupported by the " +
-              "selected device `" + parameters.device_name + "`"
-      );
+      // throw std::invalid_argument(
+      //   "Specified format `" + parameters.pixel_format_name + "` is unsupported by the " +
+      //   "selected device `" + parameters.device_name + "`"
+      // );
+      std::cerr << "Specified format `"  << parameters.pixel_format_name << "`is unsupported by the selected device: " << parameters.device_name << std::endl;
     }
 
     return m_image.pixel_format;

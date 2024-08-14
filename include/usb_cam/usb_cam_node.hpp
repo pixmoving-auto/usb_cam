@@ -79,7 +79,8 @@ public:
 
   UsbCam * m_camera;
 
-  sensor_msgs::msg::Image::UniquePtr m_image_msg;
+  // sensor_msgs::msg::Image::UniquePtr m_image_msg;
+  sensor_msgs::msg::Image::SharedPtr m_image_msg;
   sensor_msgs::msg::CompressedImage::UniquePtr m_compressed_img_msg;
   std::shared_ptr<image_transport::CameraPublisher> m_image_publisher;
   rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr m_compressed_image_publisher;
@@ -94,6 +95,11 @@ public:
 
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr m_service_capture;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr m_parameters_callback_handle;
+
+  // opencv预处理
+  cv::Mat undistort_map_x_, undistort_map_y_;  // 去畸变和resize映射map
+  sensor_msgs::msg::Image::SharedPtr m_rect_resie_image_msg;
+  sensor_msgs::msg::CameraInfo::SharedPtr m_rect_color_camera_info_msg;
 };
 }  // namespace usb_cam
 #endif  // USB_CAM__USB_CAM_NODE_HPP_
