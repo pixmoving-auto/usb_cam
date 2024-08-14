@@ -34,9 +34,6 @@
 #include "usb_cam/usb_cam_node.hpp"
 #include "usb_cam/utils.hpp"
 
-#include <opencv2/opencv.hpp>
-#include "cv_bridge/cv_bridge.h"
-
 const char BASE_TOPIC_NAME[] = "image_raw";
 
 namespace usb_cam
@@ -422,9 +419,8 @@ bool UsbCamNode::take_and_send_image()
 
   // zymouse 开始预处理
   if(m_parameters.rect_color){
-    cv::Mat image_raw;
-    cv::Mat image_rect;
-    cv::Mat rgb_image;
+    cv::Mat image_raw, image_rect;
+
     try {
       cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(m_image_msg, m_camera->get_pixel_format()->ros());
       image_raw = cv_ptr->image.clone();
@@ -442,11 +438,24 @@ bool UsbCamNode::take_and_send_image()
       // 处理未知的格式
       throw std::runtime_error("pixel_format不是uyvy或yuyv");
     }
-    // 将输入图像转换为 RGB
-    
-    cv::cvtColor(image_raw, rgb_image, conversion_code);  // 颜色空间转换
 
-    cv::remap(rgb_image, image_rect, undistort_map_x_, undistort_map_y_, cv::INTER_LINEAR);  // 去畸变和resize
+    {
+      cv::cuda::GpuMat undistort_map_x_gpu = cv::cuda::GpuMat(undistort_map_x_);
+      cv::cuda::GpuMat undistort_map_y_gpu = cv::cuda::GpuMat(undistort_map_y_);
+
+      cv::cuda::GpuMat gpu_image_raw(image_raw);
+
+      cv::cuda::GpuMat gpu_rgb_image;
+      cv::cuda::cvtColor(gpu_image_raw, gpu_rgb_image, conversion_code);
+
+      cv::cuda::GpuMat gpu_image_rect;
+      cv::cuda::remap(gpu_rgb_image, gpu_image_rect, undistort_map_x_gpu, undistort_map_y_gpu, cv::INTER_LINEAR);
+
+      // 从 GPU 下载处理后的图像
+      gpu_image_rect.download(image_rect);
+    }
+
+    
     m_rect_resie_image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_rect).toImageMsg();
 
     m_rect_color_camera_info_msg->header = m_image_msg->header;

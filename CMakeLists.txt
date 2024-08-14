@@ -27,7 +27,11 @@ else()
   ament_auto_find_build_dependencies()
 endif()
 
-find_package(OpenCV REQUIRED)
+# 设置新版本OpenCV路径
+set(OpenCV_DIR /usr/local/lib/cmake/opencv4)
+find_package(OpenCV 4.5.4 REQUIRED)
+
+find_package(CUDA REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(avcodec REQUIRED libavcodec)
@@ -55,13 +59,18 @@ add_library(${PROJECT_NAME} SHARED
 target_include_directories(${PROJECT_NAME} PUBLIC
   "include"
   ${OpenCV_INCLUDE_DIRS}
+  ${CUDA_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME}
   ${avcodec_LIBRARIES}
   ${avutil_LIBRARIES}
   ${swscale_LIBRARIES}
-  ${OpenCV_LIBRARIES})
+  ${OpenCV_LIBRARIES}
+  ${CUDA_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+  
 
 # Remove once ROS 1 Noetic is deprecated
 if($ENV{ROS_VERSION} EQUAL 1)

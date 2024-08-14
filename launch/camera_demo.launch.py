@@ -70,7 +70,7 @@ def generate_launch_description():
         "autofocus": False,
         "focus": -1,
         # zymouse
-        "rect_color": False,
+        "rect_color": True,
     }
     
     parameters["video_device"] = os.path.realpath(parameters["video_device"])

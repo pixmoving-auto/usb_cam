@@ -44,6 +44,15 @@
 
 #include "usb_cam/usb_cam.hpp"
 
+#include <opencv2/core/cuda.hpp>
+
+#include "cv_bridge/cv_bridge.h"
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/cudaimgproc.hpp> 
+#include <opencv2/cudawarping.hpp>
+#include <opencv2/cudaarithm.hpp>
+
 
 std::ostream & operator<<(std::ostream & ostr, const rclcpp::Time & tm)
 {
@@ -100,6 +109,7 @@ public:
   cv::Mat undistort_map_x_, undistort_map_y_;  // 去畸变和resize映射map
   sensor_msgs::msg::Image::SharedPtr m_rect_resie_image_msg;
   sensor_msgs::msg::CameraInfo::SharedPtr m_rect_color_camera_info_msg;
+
 };
 }  // namespace usb_cam
 #endif  // USB_CAM__USB_CAM_NODE_HPP_
