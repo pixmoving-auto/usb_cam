@@ -419,7 +419,7 @@ bool UsbCamNode::take_and_send_image()
 
   // zymouse 开始预处理
   if(m_parameters.rect_color){
-    cv::Mat image_raw, image_rect;
+    cv::Mat image_raw;
 
     try {
       cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(m_image_msg, m_camera->get_pixel_format()->ros());
@@ -439,17 +439,21 @@ bool UsbCamNode::take_and_send_image()
       throw std::runtime_error("pixel_format不是uyvy或yuyv");
     }
 
+    cv::Mat image_rect;
+    cv::Mat image_rgb;
+
+    cv::cvtColor(image_raw, image_rgb, conversion_code);
     {
       cv::cuda::GpuMat undistort_map_x_gpu = cv::cuda::GpuMat(undistort_map_x_);
       cv::cuda::GpuMat undistort_map_y_gpu = cv::cuda::GpuMat(undistort_map_y_);
 
-      cv::cuda::GpuMat gpu_image_raw(image_raw);
+      cv::cuda::GpuMat gpu_image_raw(image_rgb);
 
-      cv::cuda::GpuMat gpu_rgb_image;
-      cv::cuda::cvtColor(gpu_image_raw, gpu_rgb_image, conversion_code);
+      // cv::cuda::GpuMat gpu_rgb_image;
+      // cv::cuda::cvtColor(gpu_image_raw, gpu_rgb_image, conversion_code);
 
       cv::cuda::GpuMat gpu_image_rect;
-      cv::cuda::remap(gpu_rgb_image, gpu_image_rect, undistort_map_x_gpu, undistort_map_y_gpu, cv::INTER_LINEAR);
+      cv::cuda::remap(gpu_image_raw, gpu_image_rect, undistort_map_x_gpu, undistort_map_y_gpu, cv::INTER_LINEAR);
 
       // 从 GPU 下载处理后的图像
       gpu_image_rect.download(image_rect);
