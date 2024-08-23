@@ -342,13 +342,9 @@ public:
       std::cout << fmt.v4l2_fmt.width << " x " << fmt.v4l2_fmt.height << " (";
       std::cout << fmt.v4l2_fmt.discrete.denominator / fmt.v4l2_fmt.discrete.numerator << " Hz)";
       std::cout << std::endl;
-
-      if (fmt.v4l2_fmt.pixel_format == found_driver_format->v4l2()) {
-        result = true;
-        m_image.pixel_format = found_driver_format;
-      }
     }
-
+    result = true;
+    m_image.pixel_format = found_driver_format;
     return result;
   }
 
