@@ -21,3 +21,4 @@
       exposure: 100
       autofocus: false
       focus: -1
+      rect_color: false

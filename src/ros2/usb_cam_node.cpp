@@ -34,6 +34,9 @@
 #include "usb_cam/usb_cam_node.hpp"
 #include "usb_cam/utils.hpp"
 
+#include <opencv2/opencv.hpp>
+#include "cv_bridge/cv_bridge.h"
+
 const char BASE_TOPIC_NAME[] = "image_raw";
 
 namespace usb_cam
@@ -59,7 +62,9 @@ UsbCamNode::UsbCamNode(const rclcpp::NodeOptions & node_options)
         this,
         std::placeholders::_1,
         std::placeholders::_2,
-        std::placeholders::_3)))
+        std::placeholders::_3))),
+  m_rect_resie_image_msg(new sensor_msgs::msg::Image()),
+  m_rect_color_camera_info_msg(new sensor_msgs::msg::CameraInfo())
 {
   // declare params
   this->declare_parameter("camera_name", "default_cam");
@@ -80,6 +85,7 @@ UsbCamNode::UsbCamNode(const rclcpp::NodeOptions & node_options)
   this->declare_parameter("auto_white_balance", true);
   this->declare_parameter("white_balance", 4000);
   this->declare_parameter("autoexposure", true);
+  this->declare_parameter("rect_color", true);
   this->declare_parameter("exposure", 100);
   this->declare_parameter("autofocus", false);
   this->declare_parameter("focus", -1);  // 0-255, -1 "leave alone"
@@ -90,6 +96,36 @@ UsbCamNode::UsbCamNode(const rclcpp::NodeOptions & node_options)
     std::bind(
       &UsbCamNode::parameters_callback, this,
       std::placeholders::_1));
+  *m_camera_info_msg = m_camera_info->getCameraInfo();
+
+  cv::Mat camera_matrix;
+  cv::Mat distortion_coefficients;
+
+  camera_matrix = cv::Mat(3, 3, CV_64F, const_cast<double *>(m_camera_info_msg->k.data()));
+  distortion_coefficients = cv::Mat(1, m_camera_info_msg->d.size(), CV_64F, const_cast<double *>(m_camera_info_msg->d.data()));
+
+  cv::Size size(m_camera_info_msg->width, m_camera_info_msg->height);
+  cv::Size resize(m_camera_info_msg->width/2, m_camera_info_msg->height/2);
+
+  // 获取去畸变和resie后的内参
+  cv::Mat new_k = cv::getOptimalNewCameraMatrix(camera_matrix, distortion_coefficients, size, 0, resize);
+
+  cv::initUndistortRectifyMap(
+    camera_matrix, distortion_coefficients, cv::Mat(), 
+    new_k, resize, CV_32FC1, undistort_map_x_, undistort_map_y_);
+
+  m_rect_color_camera_info_msg->d = std::vector<double>(m_camera_info_msg->d.size(), 0.0);
+
+  m_rect_color_camera_info_msg->k[0] =  new_k.at<double>(0, 0);  // fx`
+  m_rect_color_camera_info_msg->k[2] =  new_k.at<double>(0, 2);  // cx`
+  m_rect_color_camera_info_msg->k[4] =  new_k.at<double>(1, 1);  // fy`
+  m_rect_color_camera_info_msg->k[5] =  new_k.at<double>(1, 2);  // cy`
+
+  m_rect_color_camera_info_msg->p[0] =  new_k.at<double>(0, 0);  // fx` 
+  m_rect_color_camera_info_msg->p[2] =  new_k.at<double>(0, 2);  // cx`
+  m_rect_color_camera_info_msg->p[5] =  new_k.at<double>(1, 1);  // fy`
+  m_rect_color_camera_info_msg->p[6] =  new_k.at<double>(1, 2);  // cy`
+  m_rect_color_camera_info_msg->p[10] =  1.0;
 }
 
 UsbCamNode::~UsbCamNode()
@@ -102,7 +138,8 @@ UsbCamNode::~UsbCamNode()
   m_timer.reset();
   m_service_capture.reset();
   m_parameters_callback_handle.reset();
-
+  m_rect_resie_image_msg.reset();
+  m_rect_color_camera_info_msg.reset();
   delete (m_camera);
 }
 
@@ -224,7 +261,7 @@ void UsbCamNode::get_params()
       "camera_name", "camera_info_url", "frame_id", "framerate", "image_height", "image_width",
       "io_method", "pixel_format", "av_device_format", "video_device", "brightness", "contrast",
       "saturation", "sharpness", "gain", "auto_white_balance", "white_balance", "autoexposure",
-      "exposure", "autofocus", "focus"
+      "exposure", "autofocus", "focus","rect_color"
     }
   );
 
@@ -278,7 +315,9 @@ void UsbCamNode::assign_params(const std::vector<rclcpp::Parameter> & parameters
       m_parameters.autofocus = parameter.as_bool();
     } else if (parameter.get_name() == "focus") {
       m_parameters.focus = parameter.as_int();
-    } else {
+    } else if (parameter.get_name() == "rect_color") {
+      rect_color_ = parameter.as_bool();
+    }else {
       RCLCPP_WARN(this->get_logger(), "Invalid parameter name: %s", parameter.get_name().c_str());
     }
   }
@@ -374,10 +413,28 @@ bool UsbCamNode::take_and_send_image()
   auto stamp = m_camera->get_image_timestamp();
   m_image_msg->header.stamp.sec = stamp.tv_sec;
   m_image_msg->header.stamp.nanosec = stamp.tv_nsec;
-
+  m_image_msg->header.frame_id = m_parameters.frame_id;
   *m_camera_info_msg = m_camera_info->getCameraInfo();
-  m_camera_info_msg->header = m_image_msg->header;
-  m_image_publisher->publish(*m_image_msg, *m_camera_info_msg);
+  // zymouse 开始预处理
+  if(rect_color_){
+    try {
+      cv::Mat image_raw;
+      cv::Mat image_rect;
+      cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(m_image_msg, m_camera->get_pixel_format()->ros());
+      image_raw = cv_ptr->image.clone();
+      cv::remap(image_raw, image_rect, undistort_map_x_, undistort_map_y_, cv::INTER_LINEAR);  // 去畸变和resize
+      m_rect_resie_image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "rgb8", image_rect).toImageMsg();
+
+      m_rect_color_camera_info_msg->header = m_image_msg->header;
+      m_image_publisher->publish(*m_rect_resie_image_msg, *m_rect_color_camera_info_msg);
+    } catch (cv_bridge::Exception& e) {
+      // 错误处理
+      std::cerr << "cv_bridge exception: " << e.what() << std::endl;
+    }
+  }else{
+    m_camera_info_msg->header = m_image_msg->header;
+    m_image_publisher->publish(*m_image_msg, *m_camera_info_msg);
+  }
   return true;
 }
 

@@ -60,6 +60,7 @@ def generate_launch_description():
         "exposure": 100,
         "autofocus": False,
         "focus": -1,
+        "rect_color": False
     }
     
     parameters["video_device"] = os.path.realpath(parameters["video_device"])
