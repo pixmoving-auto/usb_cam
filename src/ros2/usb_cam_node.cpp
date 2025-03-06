@@ -33,8 +33,11 @@
 #include <filesystem>
 #include "usb_cam/usb_cam_node.hpp"
 #include "usb_cam/utils.hpp"
+#include <opencv2/opencv.hpp>
+#include "cv_bridge/cv_bridge.h"
 
 const char BASE_TOPIC_NAME[] = "image_raw";
+const char BASE_RESIZE_RECT_TOPIC_NAME[] = "rect_resize/image_raw";
 
 namespace usb_cam
 {
@@ -44,9 +47,6 @@ UsbCamNode::UsbCamNode(const rclcpp::NodeOptions & node_options)
   m_camera(new usb_cam::UsbCam()),
   m_image_msg(new sensor_msgs::msg::Image()),
   m_compressed_img_msg(nullptr),
-  m_image_publisher(std::make_shared<image_transport::CameraPublisher>(
-      image_transport::create_camera_publisher(this, BASE_TOPIC_NAME,
-      rclcpp::QoS {100}.get_rmw_qos_profile()))),
   m_compressed_image_publisher(nullptr),
   m_compressed_cam_info_publisher(nullptr),
   m_parameters(),
@@ -59,8 +59,19 @@ UsbCamNode::UsbCamNode(const rclcpp::NodeOptions & node_options)
         this,
         std::placeholders::_1,
         std::placeholders::_2,
-        std::placeholders::_3)))
+        std::placeholders::_3))),
+  m_rect_resie_image_msg(new sensor_msgs::msg::Image()),
+  m_rect_resie_camera_info_msg(new sensor_msgs::msg::CameraInfo()),
+  m_image_raw_publisher(nullptr),
+  m_image_raw_info_publisher(nullptr),
+  m_image_reset_publisher(nullptr),
+  m_image_reset_info_publisher(nullptr)
 {
+  image_resize_ = this->declare_parameter("image_resize", 1);
+  if(image_resize_<=0){
+    image_resize_ = 1;
+  }
+
   // declare params
   this->declare_parameter("camera_name", "default_cam");
   this->declare_parameter("camera_info_url", "");
@@ -98,6 +109,7 @@ UsbCamNode::~UsbCamNode()
   m_image_msg.reset();
   m_compressed_img_msg.reset();
   m_camera_info_msg.reset();
+  m_rect_resie_camera_info_msg.reset();
   m_camera_info.reset();
   m_timer.reset();
   m_service_capture.reset();
@@ -180,6 +192,21 @@ void UsbCamNode::init()
     m_compressed_cam_info_publisher =
       this->create_publisher<sensor_msgs::msg::CameraInfo>(
       "camera_info", rclcpp::QoS(100));
+  }
+
+  // publisher
+  {
+    m_image_raw_publisher = this->create_publisher<sensor_msgs::msg::Image>(
+      "image_raw", rclcpp::QoS(100));
+    m_image_raw_info_publisher =
+      this->create_publisher<sensor_msgs::msg::CameraInfo>(
+      "camera_info", rclcpp::QoS(100));
+    
+    m_image_reset_publisher = this->create_publisher<sensor_msgs::msg::Image>(
+      "rect_resize/image_raw", rclcpp::QoS(100));
+    m_image_reset_info_publisher =
+      this->create_publisher<sensor_msgs::msg::CameraInfo>(
+      "rect_resize/camera_info", rclcpp::QoS(100));
   }
 
   m_image_msg->header.frame_id = m_parameters.frame_id;
@@ -374,10 +401,57 @@ bool UsbCamNode::take_and_send_image()
   auto stamp = m_camera->get_image_timestamp();
   m_image_msg->header.stamp.sec = stamp.tv_sec;
   m_image_msg->header.stamp.nanosec = stamp.tv_nsec;
+  // 去畸变 ----------------- ----------------- -----------------
+  // image_raw_ = cv::Mat(m_camera->get_image_height(), m_camera->get_image_width(), CV_8UC3, m_camera->get_image(), m_camera->get_image_step());
+  try {
+    cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(m_image_msg, m_camera->get_pixel_format()->ros());
+    image_raw_ = cv_ptr->image.clone();
+  } catch (cv_bridge::Exception& e) {
+    // 错误处理
+    std::cerr << "cv_bridge exception: " << e.what() << std::endl;
+  }
 
+  {
+    // 获取内参和畸变
+    if(is_get_camera_info_){
+      *m_camera_info_msg = m_camera_info->getCameraInfo();
+
+      cv::Mat camera_matrix;
+      cv::Mat distortion_coefficients;
+
+      camera_matrix = cv::Mat(3, 3, CV_64F, const_cast<double *>(m_camera_info_msg->k.data()));
+      distortion_coefficients = cv::Mat(1, m_camera_info_msg->d.size(), CV_64F, const_cast<double *>(m_camera_info_msg->d.data()));
+
+      cv::Size size(m_camera_info_msg->width, m_camera_info_msg->height);
+      cv::Size resize(m_camera_info_msg->width/image_resize_, m_camera_info_msg->height/image_resize_);
+
+      cv::Mat new_K = cv::getOptimalNewCameraMatrix(camera_matrix, distortion_coefficients, size, 0, resize);
+
+      cv::initUndistortRectifyMap(
+        camera_matrix, distortion_coefficients, cv::Mat(), 
+        new_K, resize, CV_32FC1, undistort_map_x_, undistort_map_y_);
+
+      *m_rect_resie_camera_info_msg = *m_camera_info_msg;
+      m_rect_resie_camera_info_msg->d.resize(5); 
+      is_get_camera_info_ = false;
+    }
+
+    cv::remap(image_raw_, image_rect_, undistort_map_x_, undistort_map_y_, cv::INTER_LINEAR);
+    m_rect_resie_image_msg = cv_bridge::CvImage(std_msgs::msg::Header(), m_camera->get_pixel_format()->ros(), image_rect_).toImageMsg();
+  }
+  // ----------------- ----------------- -----------------
   *m_camera_info_msg = m_camera_info->getCameraInfo();
   m_camera_info_msg->header = m_image_msg->header;
-  m_image_publisher->publish(*m_image_msg, *m_camera_info_msg);
+  m_camera_info_msg->header = m_image_msg->header;
+
+  m_rect_resie_camera_info_msg->header = m_image_msg->header;
+  m_rect_resie_image_msg->header = m_image_msg->header;
+
+  m_image_raw_publisher->publish(*m_image_msg);
+  m_image_raw_info_publisher->publish(*m_camera_info_msg);
+  m_image_reset_publisher->publish(*m_rect_resie_image_msg);
+  m_image_reset_info_publisher->publish(*m_rect_resie_camera_info_msg);
+
   return true;
 }
 
