@@ -370,10 +370,10 @@ public:
 
     // Look for specified pixel format
     if (!this->set_pixel_format(format_args)) {
-      throw std::invalid_argument(
-              "Specified format `" + parameters.pixel_format_name + "` is unsupported by the " +
-              "selected device `" + parameters.device_name + "`"
-      );
+      // throw std::invalid_argument(
+      //         "Specified format `" + parameters.pixel_format_name + "` is unsupported by the " +
+      //         "selected device `" + parameters.device_name + "`"
+      // );
     }
 
     return m_image.pixel_format;
